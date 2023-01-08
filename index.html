@@ -1,62 +1,76 @@
-<html lang="en">
+<!DOCTYPE html>
 
+<html lang="en">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>Grafik Gelombang Jakarta 1 Minggu ke Depan</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.1.2"></script>
 </head>
 
-<body>
+<body style="max-width: 800px; margin: auto; padding: 30px;">
+    <!-- form -->
     <form>
-        <label for="city">Kota:</label><br>
-        <input type="text" id="city" name="city" placeholder="Silahkan masukkan lokasi"><br>
+        <label for="city" style="font-weight: bold; font-size: 25px;">Kota:</label>
+        <br /><br />
+        <input type="text" id="city" name="city" placeholder="Silahkan masukkan lokasi" style="padding: 8px; width: 100%;" />
+        <br /><br />
         <input type="submit" value="Submit">
-    </form> 
+    </form>
 
-    <h1>Grafik Gelombang Jakarta 1 Minggu ke Depan</h1>
+    <p id="loading_indicator" style="display: none;">Mohon tunggu...</p>
 
+    <!-- graph -->
+    <h1 style="display: none;" id="graph_title">Grafik Gelombang <span id="kota"></span> 1 Minggu ke Depan</h1>
     <canvas id="waveHeightChart" width="400" height="150"></canvas>
     <canvas id="waveDirectionChart" width="400" height="150"></canvas>
 
-    <script type="text/javascript">
-        
+    <!-- cdn -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.1.2"></script>
+    <!-- main script -->
+    <script>
         var address = document.getElementById("city");
         var form = document.querySelector("form");
+        var loading = document.getElementById("loading_indicator");
+        let title = document.getElementById("graph_title");
 
         form.addEventListener("submit", e => {
-            e.preventDefault()
-            console.log(address.value)
-            var apiKey = "8ca78e034a25bdeac5ce35d208c2941c"
-            fetch(
-        "https://api.openweathermap.org/data/2.5/weather?q=" +
-            address.value +
-            "&units=metric&appid=" +
-            apiKey
-        )
-        .then((response) => {
-            if (!response.ok) {
-            alert("Lokasi tidak ditemukan.");
-            }
-            return response.json();
-        })
-        .then((data) => {
-            console.log(data.coord.lat, data.coord.lon)
+            loading.style.display = "block";
+            title.style.display = "none";
+            e.preventDefault();
+
+            var apiKey = "8ca78e034a25bdeac5ce35d208c2941c";
+            fetch("https://api.openweathermap.org/data/2.5/weather?q=" + address.value + "&units=metric&appid=" + apiKey)
+                .then((response) => {
+                    if (!response.ok) {
+                        alert("Lokasi tidak ditemukan.");
+                        loading.style.display = "none";
+                    }
+                    return response.json();
+                })
+                .then(async (data) => {
+                    await setup(data.coord.lat, data.coord.lon);
+                })
+                .catch(error => {
+                    alert(error);
+                    loading.style.display = "none";
+                })
         });
-    })
-    </script>
 
-    <script>
-        window.addEventListener('load', setup);
+        let waveHeightChart;
+        let waveDirectionChart;
 
-        async function setup() {
+        async function setup(lat, lon) {
             const waveHeightCtx = document.getElementById('waveHeightChart').getContext('2d');
             const waveDirectionCtx = document.getElementById('waveDirectionChart').getContext('2d');
-            const dataTable = await getData();
+
+            waveHeightChart?.destroy();
+            waveDirectionChart?.destroy();
+
+            const dataTable = await getData(lat, lon);
 
             // Wave height chart
-            const waveHeightChart = new Chart(waveHeightCtx, {
+            waveHeightChart = new Chart(waveHeightCtx, {
                 type: 'line',
                 data: {
                     labels: dataTable.dates,
@@ -73,7 +87,7 @@
             });
 
             // Wave direction chart
-            const waveDirectionChart = new Chart(waveDirectionCtx, {
+            waveDirectionChart = new Chart(waveDirectionCtx, {
                 type: 'line',
                 data: {
                     labels: dataTable.dates,
@@ -88,29 +102,38 @@
                 },
                 options: {}
             });
+
+            // all data has been successfully loaded...
+            loading.style.display = "none";
+            title.style.display = "block";
+            document.getElementById("kota").innerText = address.value;
         }
 
-        async function getData() {
-            const api_url = 'https://marine-api.open-meteo.com/v1/marine?latitude=-6.18&longitude=106.82&hourly=wave_height,wave_direction,wave_period&timezone=auto';
-            const response = await fetch(api_url);
-            const data = await response.json();
-            const x = {
-                time: data.hourly.time,
-                wave_height: data.hourly.wave_height,
-                wave_direction: data.hourly.wave_direction,
-            };
+        async function getData(lat, lon) {
+            const api_url = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_direction,wave_period&timezone=auto`;
+            try {
+                const response = await fetch(api_url);
+                const data = await response.json();
+                const formattedData = {
+                    time: data.hourly.time,
+                    wave_height: data.hourly.wave_height,
+                    wave_direction: data.hourly.wave_direction,
+                };
 
-            const dates = x.time;
-            const height = x.wave_height;
-            const direction = x.wave_direction;
-            dates.forEach((e) => console.log(e));
-            return {
-                dates,
-                height,
-                direction,
-            };
+                const dates = formattedData.time;
+                const height = formattedData.wave_height;
+                const direction = formattedData.wave_direction;
+
+                return {
+                    dates,
+                    height,
+                    direction,
+                };
+            } catch(error) {
+                alert("Error untuk mendapatkan data grafik");
+                loading.style.display = "none";
+            }
         }
-        getData();
     </script>
 </body>
 
