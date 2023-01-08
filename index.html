@@ -9,10 +9,43 @@
 </head>
 
 <body>
+    <form>
+        <label for="city">Kota:</label><br>
+        <input type="text" id="city" name="city" placeholder="Silahkan masukkan lokasi"><br>
+        <input type="submit" value="Submit">
+    </form> 
+
     <h1>Grafik Gelombang Jakarta 1 Minggu ke Depan</h1>
 
     <canvas id="waveHeightChart" width="400" height="150"></canvas>
     <canvas id="waveDirectionChart" width="400" height="150"></canvas>
+
+    <script type="text/javascript">
+        
+        var address = document.getElementById("city");
+        var form = document.querySelector("form");
+
+        form.addEventListener("submit", e => {
+            e.preventDefault()
+            console.log(address.value)
+            var apiKey = "8ca78e034a25bdeac5ce35d208c2941c"
+            fetch(
+        "https://api.openweathermap.org/data/2.5/weather?q=" +
+            address.value +
+            "&units=metric&appid=" +
+            apiKey
+        )
+        .then((response) => {
+            if (!response.ok) {
+            alert("Lokasi tidak ditemukan.");
+            }
+            return response.json();
+        })
+        .then((data) => {
+            console.log(data.coord.lat, data.coord.lon)
+        });
+    })
+    </script>
 
     <script>
         window.addEventListener('load', setup);
